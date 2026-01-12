@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/favorites_service.dart';
 import './widgets/empty_favorites_widget.dart';
 import './widgets/favorite_quote_card_widget.dart';
 
@@ -24,11 +25,13 @@ class FavoritesScreen extends StatefulWidget {
 class _FavoritesScreenState extends State<FavoritesScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final FavoritesService _favoritesService = FavoritesService();
 
   List<Map<String, dynamic>> _allFavorites = [];
   List<Map<String, dynamic>> _filteredFavorites = [];
   bool _isSearching = false;
   String _searchQuery = '';
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -45,73 +48,27 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     super.dispose();
   }
 
-  /// Load favorites from mock data
-  void _loadFavorites() {
-    _allFavorites = [
-      {
-        "id": "1",
-        "quote":
-            "The only way to do great work is to love what you do. If you haven't found it yet, keep looking. Don't settle.",
-        "author": "Steve Jobs",
-        "dateSaved": DateTime.now().subtract(const Duration(days: 2)),
-        "category": "Motivation",
-      },
-      {
-        "id": "2",
-        "quote":
-            "Success is not final, failure is not fatal: it is the courage to continue that counts.",
-        "author": "Winston Churchill",
-        "dateSaved": DateTime.now().subtract(const Duration(days: 5)),
-        "category": "Success",
-      },
-      {
-        "id": "3",
-        "quote": "Believe you can and you're halfway there.",
-        "author": "Theodore Roosevelt",
-        "dateSaved": DateTime.now().subtract(const Duration(days: 7)),
-        "category": "Inspiration",
-      },
-      {
-        "id": "4",
-        "quote":
-            "The future belongs to those who believe in the beauty of their dreams.",
-        "author": "Eleanor Roosevelt",
-        "dateSaved": DateTime.now().subtract(const Duration(days: 10)),
-        "category": "Dreams",
-      },
-      {
-        "id": "5",
-        "quote":
-            "It does not matter how slowly you go as long as you do not stop.",
-        "author": "Confucius",
-        "dateSaved": DateTime.now().subtract(const Duration(days: 12)),
-        "category": "Perseverance",
-      },
-      {
-        "id": "6",
-        "quote": "Everything you've ever wanted is on the other side of fear.",
-        "author": "George Addair",
-        "dateSaved": DateTime.now().subtract(const Duration(days: 15)),
-        "category": "Courage",
-      },
-      {
-        "id": "7",
-        "quote":
-            "The best time to plant a tree was 20 years ago. The second best time is now.",
-        "author": "Chinese Proverb",
-        "dateSaved": DateTime.now().subtract(const Duration(days: 18)),
-        "category": "Action",
-      },
-      {
-        "id": "8",
-        "quote": "Your limitation—it's only your imagination.",
-        "author": "Unknown",
-        "dateSaved": DateTime.now().subtract(const Duration(days: 20)),
-        "category": "Mindset",
-      },
-    ];
+  /// Load favorites from shared preferences
+  Future<void> _loadFavorites() async {
+    setState(() => _isLoading = true);
 
-    _filteredFavorites = List.from(_allFavorites);
+    final favorites = await _favoritesService.getFavorites();
+
+    setState(() {
+      _allFavorites = favorites.map((fav) {
+        return {
+          "id": fav['id'] ?? '',
+          "quote": fav['text'] ?? fav['quote'] ?? '',
+          "author": fav['author'] ?? 'Unknown',
+          "dateSaved": fav['dateSaved'] != null
+              ? DateTime.parse(fav['dateSaved'])
+              : DateTime.now(),
+          "category": fav['category'] ?? 'Inspiration',
+        };
+      }).toList();
+      _filteredFavorites = List.from(_allFavorites);
+      _isLoading = false;
+    });
   }
 
   /// Handle search query changes with debouncing
@@ -133,39 +90,44 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   /// Handle pull-to-refresh
   Future<void> _handleRefresh() async {
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() {
-      _loadFavorites();
-    });
+    await _loadFavorites();
   }
 
   /// Remove quote from favorites with undo option
-  void _removeFromFavorites(String quoteId, int index) {
+  Future<void> _removeFromFavorites(String quoteId, int index) async {
     final removedQuote = _filteredFavorites[index];
 
-    setState(() {
-      _allFavorites.removeWhere((quote) => quote["id"] == quoteId);
-      _filteredFavorites.removeAt(index);
-    });
+    // Remove from service first
+    final success = await _favoritesService.removeFromFavorites(quoteId);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Quote removed from favorites',
-          style: TextStyle(fontSize: 12.sp),
+    if (success) {
+      setState(() {
+        _allFavorites.removeWhere((quote) => quote["id"] == quoteId);
+        _filteredFavorites.removeAt(index);
+      });
+
+      ScaffoldMessenger.of(context.mounted ? context : context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Quote removed from favorites',
+            style: TextStyle(fontSize: 12.sp),
+          ),
+          action: SnackBarAction(
+            label: 'UNDO',
+            onPressed: () async {
+              await _favoritesService.addToFavorites({
+                'id': removedQuote['id'],
+                'text': removedQuote['quote'],
+                'author': removedQuote['author'],
+                'category': removedQuote['category'],
+              });
+              await _loadFavorites();
+            },
+          ),
+          duration: const Duration(seconds: 3),
         ),
-        action: SnackBarAction(
-          label: 'UNDO',
-          onPressed: () {
-            setState(() {
-              _allFavorites.add(removedQuote);
-              _onSearchChanged();
-            });
-          },
-        ),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+      );
+    }
   }
 
   /// Show delete confirmation dialog
@@ -310,7 +272,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
         // Favorites list or empty state
         Expanded(
-          child: _filteredFavorites.isEmpty
+          child: _isLoading
+              ? Center(
+                  child: CircularProgressIndicator(
+                    color: theme.colorScheme.primary,
+                  ),
+                )
+              : _filteredFavorites.isEmpty
               ? EmptyFavoritesWidget(
                   isSearching: _isSearching,
                   onDiscoverQuotes: _navigateToHome,
@@ -339,7 +307,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             context,
                           );
                           if (confirmed) {
-                            _removeFromFavorites(
+                            await _removeFromFavorites(
                               favorite["id"] as String,
                               index,
                             );

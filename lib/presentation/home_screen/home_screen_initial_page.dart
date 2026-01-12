@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -8,6 +6,7 @@ import 'package:sizer/sizer.dart';
 import './widgets/action_button_widget.dart';
 import './widgets/quote_card_widget.dart';
 import '../../services/quote_service.dart';
+import '../../services/favorites_service.dart';
 
 class HomeScreenInitialPage extends StatefulWidget {
   const HomeScreenInitialPage({super.key});
@@ -21,6 +20,7 @@ class _HomeScreenInitialPageState extends State<HomeScreenInitialPage> {
   bool _isFavorited = false;
   final int _streakDays = 12;
   final QuoteService _quoteService = QuoteService();
+  final FavoritesService _favoritesService = FavoritesService();
 
   Map<String, dynamic> _currentQuote = {
     "id": "",
@@ -39,8 +39,10 @@ class _HomeScreenInitialPageState extends State<HomeScreenInitialPage> {
     setState(() => _isLoading = true);
     try {
       final quote = await _quoteService.getRandomQuote();
+      final isFav = await _favoritesService.isFavorited(quote['id']);
       setState(() {
         _currentQuote = quote;
+        _isFavorited = isFav;
         _isLoading = false;
       });
     } catch (e) {
@@ -62,9 +64,10 @@ class _HomeScreenInitialPageState extends State<HomeScreenInitialPage> {
 
     try {
       final quote = await _quoteService.getRandomQuote();
+      final isFav = await _favoritesService.isFavorited(quote['id']);
       setState(() {
         _currentQuote = quote;
-        _isFavorited = false;
+        _isFavorited = isFav;
         _isLoading = false;
       });
     } catch (e) {
@@ -77,7 +80,6 @@ class _HomeScreenInitialPageState extends State<HomeScreenInitialPage> {
         };
         _isLoading = false;
       });
-
       ScaffoldMessenger.of(context.mounted ? context : context).showSnackBar(
         SnackBar(
           content: Text('Failed to fetch new quote'),
@@ -88,9 +90,42 @@ class _HomeScreenInitialPageState extends State<HomeScreenInitialPage> {
     }
   }
 
-  void _toggleFavorite() {
+  Future<void> _toggleFavorite() async {
     HapticFeedback.lightImpact();
-    setState(() => _isFavorited = !_isFavorited);
+
+    if (_currentQuote['id'] == 'error' || _currentQuote['id'].isEmpty) {
+      return;
+    }
+
+    final newFavoriteState = !_isFavorited;
+
+    if (newFavoriteState) {
+      final success = await _favoritesService.addToFavorites(_currentQuote);
+      if (success) {
+        setState(() => _isFavorited = true);
+        ScaffoldMessenger.of(context.mounted ? context : context).showSnackBar(
+          SnackBar(
+            content: Text('Added to favorites'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } else {
+      final success = await _favoritesService.removeFromFavorites(
+        _currentQuote['id'],
+      );
+      if (success) {
+        setState(() => _isFavorited = false);
+        ScaffoldMessenger.of(context.mounted ? context : context).showSnackBar(
+          SnackBar(
+            content: Text('Removed from favorites'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _shareQuote() {
