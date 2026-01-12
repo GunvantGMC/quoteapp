@@ -7,6 +7,7 @@ import './widgets/action_button_widget.dart';
 import './widgets/quote_card_widget.dart';
 import '../../services/quote_service.dart';
 import '../../services/favorites_service.dart';
+import '../../services/streak_service.dart';
 
 class HomeScreenInitialPage extends StatefulWidget {
   const HomeScreenInitialPage({super.key});
@@ -18,9 +19,10 @@ class HomeScreenInitialPage extends StatefulWidget {
 class _HomeScreenInitialPageState extends State<HomeScreenInitialPage> {
   bool _isLoading = false;
   bool _isFavorited = false;
-  final int _streakDays = 12;
+  int _streakDays = 0;
   final QuoteService _quoteService = QuoteService();
   final FavoritesService _favoritesService = FavoritesService();
+  final StreakService _streakService = StreakService();
 
   Map<String, dynamic> _currentQuote = {
     "id": "",
@@ -33,6 +35,14 @@ class _HomeScreenInitialPageState extends State<HomeScreenInitialPage> {
   void initState() {
     super.initState();
     _loadInitialQuote();
+    _loadStreak();
+  }
+
+  Future<void> _loadStreak() async {
+    final streak = await _streakService.getStreakCount();
+    setState(() {
+      _streakDays = streak;
+    });
   }
 
   Future<void> _loadInitialQuote() async {
@@ -132,7 +142,6 @@ class _HomeScreenInitialPageState extends State<HomeScreenInitialPage> {
     HapticFeedback.selectionClick();
     final String shareText =
         '"${_currentQuote["text"]}"\n\n- ${_currentQuote["author"]}';
-    // Share.share(shareText, subject: 'Inspirational Quote');
     SharePlus.instance.share(
       ShareParams(text: shareText, subject: 'Inspirational Quote'),
     );

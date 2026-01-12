@@ -301,7 +301,6 @@ class FavoriteQuoteCardWidget extends StatelessWidget {
             backgroundColor: theme.colorScheme.error,
             foregroundColor: Colors.white,
             icon: Icons.delete,
-            label: 'Delete',
             borderRadius: BorderRadius.circular(12),
           ),
         ],
