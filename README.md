@@ -89,6 +89,7 @@ The app design was created using **Stitch** for UI generation and wireframing. T
 - Clear typography for quote readability
 - Intuitive action buttons (favorite, next, share)
 - Visual streak counter for user engagement
+  > Minor design adjustments were made during final implementation to improve usability and layout consistency. As a result, small differences may exist between initial designs and the final app.
 
 ### App Screenshots
 
