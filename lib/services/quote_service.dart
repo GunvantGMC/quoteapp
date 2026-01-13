@@ -2,16 +2,21 @@ import 'package:dio/dio.dart';
 
 class QuoteService {
   final Dio _dio = Dio();
-  static const String _baseUrl = 'http://api.quotable.io';
+
+  static const String _baseUrl =
+      'https://quotableioapiexpress-js-proxy.vercel.app';
 
   Future<Map<String, dynamic>> getRandomQuote() async {
     try {
-      final response = await _dio.get('$_baseUrl/quotes/random');
+      final response = await _dio.get('$_baseUrl/api/quote');
 
       if (response.statusCode == 200 &&
-          response.data is List &&
-          (response.data as List).isNotEmpty) {
-        final quoteData = (response.data as List).first;
+          ((response.data is Map<String, dynamic> &&
+                  (response.data as Map<String, dynamic>).isNotEmpty) ||
+              (response.data is List && (response.data as List).isNotEmpty))) {
+        final quoteData = response.data is List
+            ? (response.data as List).first
+            : response.data as Map<String, dynamic>;
         return {
           'id': quoteData['_id'] ?? '',
           'text': quoteData['content'] ?? '',
