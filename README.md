@@ -2,7 +2,13 @@
 
 A clean, minimalist mobile app that delivers daily inspiration through curated quotes. Built with Flutter and powered by the Quotable API.
 
-![Daily Quote App Screenshot](https://dhiwise-assets.s3.ap-south-1.amazonaws.com/uploadAttachments/screen-1768248092122.png)
+### App Designs/Screenshots
+
+![Daily Quote App Screenshot](https://github.com/GunvantGMC/quoteapp/blob/main/assets/images/Quote%20App%20Designs.png?raw=true)
+
+**Web App Link** : https://quoteapp.gunvantgmc.in
+
+> For better experience open link in mobile view
 
 ## Features
 
@@ -91,23 +97,32 @@ The app design was created using **Stitch** for UI generation and wireframing. T
 - Visual streak counter for user engagement
   > Minor design adjustments were made during final implementation to improve usability and layout consistency. As a result, small differences may exist between initial designs and the final app.
 
-### App Screenshots
-
-**Home Screen:**
-![Home Screen](https://dhiwise-assets.s3.ap-south-1.amazonaws.com/uploadAttachments/screen-1768248092122.png)
-
-The home screen features:
+**Home (Daily Quote):** **_Screen 1_**
 
 - Daily streak counter at the top
 - Large, readable quote display with decorative quotation marks
 - Author attribution in green accent color
 - Three action buttons: Favorite, Next Quote, and Share
 
+**Favorite Quote:** **_Screen 2_**
+
+- Lists all saved favorite quotes
+- Each quote shows text and author
+- Options to _Share_ or _Delete_ a quote
+- Scrollable list with simple layout
+
+**Quote Detail View:** **_Screen 3_**
+
+- Displays the selected quote in full
+- Shows author name clearly
+- Focused UI for distraction-free reading
+
 ## API Integration
 
 This app integrates with the [Quotable API](https://api.quotable.io) for fetching random quotes:
 
-- **Endpoint**: `http://api.quotable.io/quotes/random`
+- **Quotable Endpoint**: `http://api.quotable.io/quotes/random`
+- **Vercel Endpoint**: `https://quotableioapiexpress-js-proxy.vercel.app/api/quote`
 - **Authentication**: No authentication required
 - **Response**: Returns quote content, author, and metadata
 
@@ -205,6 +220,18 @@ lib/
 
 **Problem**: Streak counter was showing hardcoded value
 **Solution**: Implemented StreakService with SharedPreferences to track actual daily visits and calculate consecutive streaks
+
+### Challenge 4: HTTP/HTTPS API Compatibility For Flutter Web
+
+**Problem**: The original quotable API used HTTP-only endpoints. After hosting the Flutter web app on HTTPS, the browser blocked mixed content (HTTPS page trying to fetch HTTP resources), causing the API to fail.
+**Solution**: Implemented a wrapper API using Vercel serverless functions that:
+
+1. Acts as a proxy between the Flutter web app and the HTTP API
+2. Accepts HTTPS requests from the Flutter app
+3. Fetches data from the HTTP API on the server side
+4. Returns the data over HTTPS to the client
+
+This approach made the app fully functional for HTTPS traffic while maintaining compatibility with the existing API.
 
 ## Future Enhancements
 
